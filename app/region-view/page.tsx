@@ -3,12 +3,16 @@
 import { useState, useEffect } from "react";
 import { Navbar } from "../../src/components/ui/navbar";
 import { Footer } from "../../src/components/ui/footer";
-import {
-  BubbleMap,
-  transformRegionalDataForBubbleMap,
-} from "../../src/components/ui/bubble-map";
+import dynamic from "next/dynamic";
+import { transformRegionalDataForBubbleMap } from "../../src/components/ui/bubble-map";
 import { fetchMarketingDataClient } from "../../src/lib/api";
 import { MarketingData, RegionalPerformance } from "../../src/types/marketing";
+
+const BubbleMap = dynamic(
+  () =>
+    import("../../src/components/ui/bubble-map").then((mod) => mod.BubbleMap),
+  { ssr: false }
+);
 
 export default function RegionView() {
   const [marketingData, setMarketingData] = useState<MarketingData | null>(
@@ -33,7 +37,6 @@ export default function RegionView() {
     loadData();
   }, []);
 
-  // Get aggregated regional data across all campaigns
   const getAggregatedRegionalData = () => {
     if (!marketingData?.campaigns) return [];
 
@@ -51,7 +54,6 @@ export default function RegionView() {
             conversions: existing.conversions + region.conversions,
             spend: existing.spend + region.spend,
             revenue: existing.revenue + region.revenue,
-            // Keep the latest calculated metrics
             ctr: region.ctr,
             conversion_rate: region.conversion_rate,
             cpc: region.cpc,
@@ -94,10 +96,7 @@ export default function RegionView() {
   return (
     <div className="flex h-screen bg-gray-900">
       <Navbar />
-
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col transition-all duration-300 ease-in-out">
-        {/* Hero Section */}
         <section className="bg-gradient-to-r from-gray-800 to-gray-700 text-white py-12">
           <div className="px-6 lg:px-8">
             <div className="text-center">
@@ -111,10 +110,8 @@ export default function RegionView() {
           </div>
         </section>
 
-        {/* Content Area */}
         <div className="flex-1 p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto space-y-6">
-            {/* Revenue Bubble Map */}
             <BubbleMap
               title="Revenue by Region"
               data={transformRegionalDataForBubbleMap(
@@ -129,8 +126,6 @@ export default function RegionView() {
                 `${region}: $${value.toLocaleString()}`
               }
             />
-
-            {/* Spend Bubble Map */}
             <BubbleMap
               title="Spend by Region"
               data={transformRegionalDataForBubbleMap(
@@ -145,8 +140,6 @@ export default function RegionView() {
                 `${region}: $${value.toLocaleString()}`
               }
             />
-
-            {/* Impressions Bubble Map */}
             <BubbleMap
               title="Impressions by Region"
               data={transformRegionalDataForBubbleMap(
@@ -161,8 +154,6 @@ export default function RegionView() {
                 `${region}: ${value.toLocaleString()}`
               }
             />
-
-            {/* Conversions Bubble Map */}
             <BubbleMap
               title="Conversions by Region"
               data={transformRegionalDataForBubbleMap(
