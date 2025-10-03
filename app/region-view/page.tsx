@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { Navbar } from "../../src/components/ui/navbar";
 import { Footer } from "../../src/components/ui/footer";
 import dynamic from "next/dynamic";
-import { transformRegionalDataForBubbleMap } from "../../src/components/ui/bubble-map";
 import { fetchMarketingDataClient } from "../../src/lib/api";
 import { MarketingData, RegionalPerformance } from "../../src/types/marketing";
 
@@ -13,6 +12,8 @@ const BubbleMap = dynamic(
     import("../../src/components/ui/bubble-map").then((mod) => mod.BubbleMap),
   { ssr: false }
 );
+
+let transformRegionalDataForBubbleMap: any = null;
 
 export default function RegionView() {
   const [marketingData, setMarketingData] = useState<MarketingData | null>(
@@ -25,6 +26,14 @@ export default function RegionView() {
     const loadData = async () => {
       try {
         setLoading(true);
+
+        // Load the transform function
+        const bubbleMapModule = await import(
+          "../../src/components/ui/bubble-map"
+        );
+        transformRegionalDataForBubbleMap =
+          bubbleMapModule.transformRegionalDataForBubbleMap;
+
         const data = await fetchMarketingDataClient();
         setMarketingData(data);
       } catch (err) {
@@ -71,7 +80,7 @@ export default function RegionView() {
 
   const aggregatedRegionalData = getAggregatedRegionalData();
 
-  if (loading) {
+  if (loading || !transformRegionalDataForBubbleMap) {
     return (
       <div className="flex h-screen bg-gray-900">
         <Navbar />
