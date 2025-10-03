@@ -1,11 +1,100 @@
-import { Navbar } from '../../src/components/ui/navbar';
-import { Footer } from '../../src/components/ui/footer';
+"use client";
+
+import { useState, useEffect } from "react";
+import { Navbar } from "../../src/components/ui/navbar";
+import { Footer } from "../../src/components/ui/footer";
+import {
+  BubbleMap,
+  transformRegionalDataForBubbleMap,
+} from "../../src/components/ui/bubble-map";
+import { fetchMarketingDataClient } from "../../src/lib/api";
+import { MarketingData, RegionalPerformance } from "../../src/types/marketing";
 
 export default function RegionView() {
+  const [marketingData, setMarketingData] = useState<MarketingData | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const data = await fetchMarketingDataClient();
+        setMarketingData(data);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
+
+  // Get aggregated regional data across all campaigns
+  const getAggregatedRegionalData = () => {
+    if (!marketingData?.campaigns) return [];
+
+    const regionalMap = new Map<string, RegionalPerformance>();
+
+    marketingData.campaigns.forEach((campaign) => {
+      campaign.regional_performance.forEach((region) => {
+        const key = `${region.region}-${region.country}`;
+        if (regionalMap.has(key)) {
+          const existing = regionalMap.get(key)!;
+          regionalMap.set(key, {
+            ...existing,
+            impressions: existing.impressions + region.impressions,
+            clicks: existing.clicks + region.clicks,
+            conversions: existing.conversions + region.conversions,
+            spend: existing.spend + region.spend,
+            revenue: existing.revenue + region.revenue,
+            // Keep the latest calculated metrics
+            ctr: region.ctr,
+            conversion_rate: region.conversion_rate,
+            cpc: region.cpc,
+            cpa: region.cpa,
+            roas: region.roas,
+          });
+        } else {
+          regionalMap.set(key, { ...region });
+        }
+      });
+    });
+
+    return Array.from(regionalMap.values());
+  };
+
+  const aggregatedRegionalData = getAggregatedRegionalData();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-gray-900">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-white text-xl">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen bg-gray-900">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-red-400 text-xl">Error: {error}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-900">
       <Navbar />
-      
+
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col transition-all duration-300 ease-in-out">
         {/* Hero Section */}
@@ -13,17 +102,84 @@ export default function RegionView() {
           <div className="px-6 lg:px-8">
             <div className="text-center">
               <h1 className="text-3xl md:text-5xl font-bold">
-                Region View
+                Regional Performance
               </h1>
+              <p className="mt-4 text-lg text-gray-300">
+                Track revenue and spend across different regions
+              </p>
             </div>
           </div>
         </section>
 
         {/* Content Area */}
         <div className="flex-1 p-4 lg:p-6 overflow-y-auto">
-          {/* Page content will go here */}
+          <div className="max-w-7xl mx-auto space-y-6">
+            {/* Revenue Bubble Map */}
+            <BubbleMap
+              title="Revenue by Region"
+              data={transformRegionalDataForBubbleMap(
+                aggregatedRegionalData,
+                "revenue"
+              )}
+              height={500}
+              minRadius={10}
+              maxRadius={60}
+              formatValue={(value) => `$${value.toLocaleString()}`}
+              formatTooltipValue={(value, region) =>
+                `${region}: $${value.toLocaleString()}`
+              }
+            />
+
+            {/* Spend Bubble Map */}
+            <BubbleMap
+              title="Spend by Region"
+              data={transformRegionalDataForBubbleMap(
+                aggregatedRegionalData,
+                "spend"
+              )}
+              height={500}
+              minRadius={10}
+              maxRadius={60}
+              formatValue={(value) => `$${value.toLocaleString()}`}
+              formatTooltipValue={(value, region) =>
+                `${region}: $${value.toLocaleString()}`
+              }
+            />
+
+            {/* Impressions Bubble Map */}
+            <BubbleMap
+              title="Impressions by Region"
+              data={transformRegionalDataForBubbleMap(
+                aggregatedRegionalData,
+                "impressions"
+              )}
+              height={500}
+              minRadius={8}
+              maxRadius={50}
+              formatValue={(value) => value.toLocaleString()}
+              formatTooltipValue={(value, region) =>
+                `${region}: ${value.toLocaleString()}`
+              }
+            />
+
+            {/* Conversions Bubble Map */}
+            <BubbleMap
+              title="Conversions by Region"
+              data={transformRegionalDataForBubbleMap(
+                aggregatedRegionalData,
+                "conversions"
+              )}
+              height={500}
+              minRadius={8}
+              maxRadius={50}
+              formatValue={(value) => value.toLocaleString()}
+              formatTooltipValue={(value, region) =>
+                `${region}: ${value.toLocaleString()}`
+              }
+            />
+          </div>
         </div>
-        
+
         <Footer />
       </div>
     </div>
